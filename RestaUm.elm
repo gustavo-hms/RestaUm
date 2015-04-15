@@ -1,11 +1,11 @@
-module RestaUm where
-
 import Array
 import Text
 import Graphics.Element (..)
+import Graphics.Input as Input
 import Window
 import Signal
 import Maybe
+import Color
 
 -- Modelo
 
@@ -47,9 +47,11 @@ casa (d, i, j) t =
     let (Quadrante q) = quadrante d t
     in  Array.get (5*i+j) q |> Maybe.withDefault (Vazia)
 
-tabuleiro =  tabuleiroInicial
-    -- |> removerPedra (Inferior, 2, 3)
-    -- |> inserirPedra (Central, 2, 2) Marcada
+posição : Disposição -> Int -> PosiçãoDaCasa
+posição d índice =
+    let linha = índice//5
+        coluna = índice - linha*5
+    in  (d, linha, coluna)
 
 -- Atualização
 
@@ -66,38 +68,67 @@ removerPedra posição t = atualizarCasa posição (\c -> Vazia) t
 inserirPedra : PosiçãoDaCasa -> Pedra -> Tabuleiro -> Tabuleiro
 inserirPedra posição p t = atualizarCasa posição (\c -> Casa p) t
 
+alterarMarcação : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
+alterarMarcação posição t =
+    case casa posição t of
+        Vazia  -> t
+        Casa p -> case p of
+            Marcada    -> inserirPedra posição Desmarcada t
+            Desmarcada -> inserirPedra posição Marcada t
+
+atualizar : Comando -> Tabuleiro -> Tabuleiro
+atualizar comando t = case comando of
+    AlterarMarcação posição -> alterarMarcação posição t
+
 -- Exibição
 
-exibirQuadrante : Quadrante -> Element
-exibirQuadrante (Quadrante a) =
-    flow down
-    [ Array.slice 0  5  a |> Array.map exibirCasa |> Array.toList |> flow right
-    , Array.slice 5  10 a |> Array.map exibirCasa |> Array.toList |> flow right
-    , Array.slice 10 15 a |> Array.map exibirCasa |> Array.toList |> flow right
-    , Array.slice 15 20 a |> Array.map exibirCasa |> Array.toList |> flow right
-    , Array.slice 20 25 a |> Array.map exibirCasa |> Array.toList |> flow right
-    ]
+exibirQuadrante : Disposição -> Tabuleiro -> Element
+exibirQuadrante d t =
+    let (Quadrante array) = quadrante d t
+        casas = Array.indexedMap (exibirCasa d) array
+    in  flow down
+            [ Array.slice 0  5  casas |> Array.toList |> flow right
+            , Array.slice 5  10 casas |> Array.toList |> flow right
+            , Array.slice 10 15 casas |> Array.toList |> flow right
+            , Array.slice 15 20 casas |> Array.toList |> flow right
+            , Array.slice 20 25 casas |> Array.toList |> flow right
+            ]
 
-exibirCasa : Casa -> Element
-exibirCasa c = case c of
-    Vazia   -> Text.plainText " _ "
-    Casa  _ -> Text.plainText " o "
+exibirCasa : Disposição -> Int -> Casa -> Element
+exibirCasa d índice c =
+    let p = posição d índice
+    in case c of
+        Vazia      -> Text.plainText " _ " |> Input.clickable (Signal.send canal (AlterarMarcação p))
+        Casa pedra -> exibirPedra pedra |> Input.clickable (Signal.send canal (AlterarMarcação p))
 
-quadranteSuperior = exibirQuadrante <| quadrante Superior tabuleiro
-quadranteInferior = exibirQuadrante <| quadrante Inferior tabuleiro
-quadranteOeste = exibirQuadrante <| quadrante Oeste tabuleiro
-quadranteLeste = exibirQuadrante <| quadrante Leste tabuleiro
-quadranteCentral = exibirQuadrante <| quadrante Central tabuleiro
-espaçoVazio = spacer (widthOf quadranteOeste) (heightOf quadranteSuperior)
+exibirPedra : Pedra -> Element
+exibirPedra p = case p of
+    Marcada    -> Text.color Color.lightGreen (Text.fromString " o ") |> Text.centered
+    Desmarcada -> Text.plainText " o "
 
-exibir : (Int, Int) -> Element
-exibir (x, y) = container x y middle <| flow down
-    [ flow right [ espaçoVazio,    quadranteSuperior, espaçoVazio    ]
-    , flow right [ quadranteOeste, quadranteCentral,  quadranteLeste ]
-    , flow right [ espaçoVazio,    quadranteInferior, espaçoVazio    ]
+quadranteSuperior = exibirQuadrante Superior
+quadranteInferior = exibirQuadrante Inferior
+quadranteOeste = exibirQuadrante Oeste
+quadranteLeste = exibirQuadrante Leste
+quadranteCentral = exibirQuadrante Central
+espaçoVazio t = spacer (widthOf <| quadranteOeste t) (heightOf <| quadranteSuperior t)
+
+exibir : (Int, Int) -> Tabuleiro -> Element
+exibir (x, y) t = container x y middle <| flow down
+    [ flow right [ espaçoVazio t,    quadranteSuperior t, espaçoVazio t    ]
+    , flow right [ quadranteOeste t, quadranteCentral t,  quadranteLeste t ]
+    , flow right [ espaçoVazio t,    quadranteInferior t, espaçoVazio t    ]
     ]
 
 -- Sinais
 
+type Comando
+    = AlterarMarcação PosiçãoDaCasa
+
+canal : Signal.Channel Comando
+canal = Signal.channel <| AlterarMarcação (Central, 2, 2)
+
 main : Signal Element
-main = Signal.map exibir Window.dimensions
+main =  Signal.subscribe canal
+     |> Signal.foldp atualizar tabuleiroInicial
+     |> Signal.map2 exibir Window.dimensions
