@@ -12,8 +12,12 @@ import Color
 type Pedra = Desmarcada | Marcada
 type Casa = Vazia | Casa Pedra
 type Quadrante = Quadrante (Array.Array Casa)
-type alias Tabuleiro = Array.Array Quadrante 
 type alias PosiçãoDaCasa = (Disposição, Int, Int)
+type alias Tabuleiro = Array.Array Quadrante 
+type alias Estado =
+    { tabuleiro : Tabuleiro
+    , casaMarcada : Maybe PosiçãoDaCasa
+    }
 
 type Disposição
     = Superior
@@ -42,6 +46,9 @@ tabuleiroInicial = Array.fromList
     , Quadrante <| Array.initialize 25 (\i -> if i == 12 then Vazia else Casa Desmarcada)
     ]
 
+estadoInicial : Estado
+estadoInicial = { tabuleiro = tabuleiroInicial, casaMarcada = Nothing }
+
 casa : PosiçãoDaCasa -> Tabuleiro -> Casa
 casa (d, i, j) t =
     let (Quadrante q) = quadrante d t
@@ -68,6 +75,12 @@ removerPedra p t = atualizarCasa p (\_ -> Vazia) t
 inserirPedra : PosiçãoDaCasa -> Pedra -> Tabuleiro -> Tabuleiro
 inserirPedra pos p t = atualizarCasa pos (\_ -> Casa p) t
 
+removerMarcação :  PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
+removerMarcação p t = atualizarCasa p (\_ -> Casa Desmarcada) t
+
+inserirMarcação :  PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
+inserirMarcação p t = atualizarCasa p (\_ -> Casa Marcada) t
+
 alterarMarcação : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
 alterarMarcação pos t =
     case casa pos t of
@@ -76,9 +89,21 @@ alterarMarcação pos t =
             Marcada    -> inserirPedra pos Desmarcada t
             Desmarcada -> inserirPedra pos Marcada t
 
-atualizar : Comando -> Tabuleiro -> Tabuleiro
-atualizar comando t = case comando of
-    AlterarMarcação p -> alterarMarcação p t
+atualizar : Comando -> Estado -> Estado
+atualizar c e = case c of
+    AlterarMarcação p ->
+        case e.casaMarcada of
+            Nothing -> 
+                { e | tabuleiro <- inserirMarcação p e.tabuleiro
+                , casaMarcada <- Just p }
+            Just pos -> 
+                if pos == p
+                   then { e | tabuleiro <- removerMarcação p e.tabuleiro
+                                 , casaMarcada <- Nothing }
+                   else 
+                       let t = removerMarcação pos e.tabuleiro
+                           t' = inserirMarcação p t
+                       in { e | tabuleiro <- t', casaMarcada <- Just p }
 
 -- Exibição
 
@@ -130,5 +155,6 @@ canal = Signal.channel <| AlterarMarcação (Central, 2, 2)
 
 main : Signal Element
 main =  Signal.subscribe canal
-     |> Signal.foldp atualizar tabuleiroInicial
+     |> Signal.foldp atualizar estadoInicial
+     |> Signal.map .tabuleiro
      |> Signal.map2 exibir Window.dimensions

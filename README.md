@@ -1,2 +1,2 @@
-# RestaUm
+# Resta Um
 Jogo de Resta Um
