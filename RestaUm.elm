@@ -63,22 +63,22 @@ atualizarCasa (d, i, j) f t =
     in  Array.set (índice d) novoQuadrante t
 
 removerPedra : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-removerPedra posição t = atualizarCasa posição (\c -> Vazia) t
+removerPedra p t = atualizarCasa p (\_ -> Vazia) t
 
 inserirPedra : PosiçãoDaCasa -> Pedra -> Tabuleiro -> Tabuleiro
-inserirPedra posição p t = atualizarCasa posição (\c -> Casa p) t
+inserirPedra pos p t = atualizarCasa pos (\_ -> Casa p) t
 
 alterarMarcação : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-alterarMarcação posição t =
-    case casa posição t of
+alterarMarcação pos t =
+    case casa pos t of
         Vazia  -> t
         Casa p -> case p of
-            Marcada    -> inserirPedra posição Desmarcada t
-            Desmarcada -> inserirPedra posição Marcada t
+            Marcada    -> inserirPedra pos Desmarcada t
+            Desmarcada -> inserirPedra pos Marcada t
 
 atualizar : Comando -> Tabuleiro -> Tabuleiro
 atualizar comando t = case comando of
-    AlterarMarcação posição -> alterarMarcação posição t
+    AlterarMarcação p -> alterarMarcação p t
 
 -- Exibição
 
