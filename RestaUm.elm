@@ -1,6 +1,6 @@
-import Array
+import Array (..)
 import Text
-import Graphics.Element (..)
+import Graphics.Element as Element
 import Graphics.Input as Input
 import Window
 import Signal
@@ -9,15 +9,14 @@ import Color
 
 -- Modelo
 
-type Pedra = Desmarcada | Marcada
-type Casa = Vazia | Casa Pedra
-type Quadrante = Quadrante (Array.Array Casa)
-type alias PosiçãoDaCasa = (Disposição, Int, Int)
-type alias Tabuleiro = Array.Array Quadrante 
+type Casa = Vazia | Pedra
+type alias Índice = Int
+type alias Posição = (Disposição, Índice, Índice)
+type Quadrante = Quadrante (Disposição, Array Casa)
+type alias Tabuleiro = Array Quadrante
 type alias Estado =
-    { tabuleiro : Tabuleiro
-    , casaMarcada : Maybe PosiçãoDaCasa
-    }
+    { tabuleiro   : Tabuleiro
+    , selecionada : Maybe Posição}
 
 type Disposição
     = Superior
@@ -26,7 +25,7 @@ type Disposição
     | Leste
     | Central
 
-índice : Disposição -> Int
+índice : Disposição -> Índice
 índice d = case d of
     Superior -> 0
     Inferior -> 1
@@ -34,27 +33,26 @@ type Disposição
     Leste    -> 3
     Central  -> 4
 
+disposição : Índice -> Disposição
+disposição i = case i of
+    0 -> Superior
+    1 -> Inferior
+    2 -> Oeste   
+    3 -> Leste   
+    4 -> Central 
+
 quadrante : Disposição -> Tabuleiro -> Quadrante
-quadrante d t = Array.get (índice d) t |> Maybe.withDefault (Quadrante Array.empty)
+quadrante d t = get (índice d) t |> Maybe.withDefault (Quadrante (Superior, empty))
 
 tabuleiroInicial : Tabuleiro
-tabuleiroInicial = Array.fromList
-    [ Quadrante <| Array.repeat 25 (Casa Desmarcada)
-    , Quadrante <| Array.repeat 25 (Casa Desmarcada)
-    , Quadrante <| Array.repeat 25 (Casa Desmarcada)
-    , Quadrante <| Array.repeat 25 (Casa Desmarcada)
-    , Quadrante <| Array.initialize 25 (\i -> if i == 12 then Vazia else Casa Desmarcada)
-    ]
+tabuleiroInicial =
+    let início = initialize 4 (\i -> Quadrante (disposição i, repeat 25 Pedra))
+    in  push (Quadrante (Central, initialize 25 (\i -> if i == 12 then Vazia else Pedra))) início
 
 estadoInicial : Estado
-estadoInicial = { tabuleiro = tabuleiroInicial, casaMarcada = Nothing }
+estadoInicial = { tabuleiro = tabuleiroInicial, selecionada = Nothing }
 
-casa : PosiçãoDaCasa -> Tabuleiro -> Casa
-casa (d, i, j) t =
-    let (Quadrante q) = quadrante d t
-    in  Array.get (5*i+j) q |> Maybe.withDefault (Vazia)
-
-posição : Disposição -> Int -> PosiçãoDaCasa
+posição : Disposição -> Int -> Posição
 posição d índice =
     let linha = índice//5
         coluna = índice - linha*5
@@ -62,99 +60,87 @@ posição d índice =
 
 -- Atualização
 
-atualizarCasa : PosiçãoDaCasa -> (Casa -> Casa) -> Tabuleiro -> Tabuleiro
-atualizarCasa (d, i, j) f t =
-    let (Quadrante q) = quadrante d t
+atualizarCasa : Casa -> Posição -> Tabuleiro -> Tabuleiro
+atualizarCasa novaCasa (d, i, j) t =
+    let (Quadrante (_, array)) = quadrante d t
         novoQuadrante =
-            Quadrante <| Array.indexedMap (\k c -> if k == 5*i+j then f c else c) q
-    in  Array.set (índice d) novoQuadrante t
+            Quadrante (d, indexedMap (\k c -> if k == 5*i+j then novaCasa else c) array)
+    in set (índice d) novoQuadrante t
 
-removerPedra : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-removerPedra p t = atualizarCasa p (\_ -> Vazia) t
+removerPedra : Posição -> Tabuleiro -> Tabuleiro
+removerPedra = atualizarCasa Vazia
 
-inserirPedra : PosiçãoDaCasa -> Pedra -> Tabuleiro -> Tabuleiro
-inserirPedra pos p t = atualizarCasa pos (\_ -> Casa p) t
+inserirPedra : Posição -> Tabuleiro -> Tabuleiro
+inserirPedra = atualizarCasa Pedra
 
-removerMarcação :  PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-removerMarcação p t = atualizarCasa p (\_ -> Casa Desmarcada) t
-
-inserirMarcação :  PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-inserirMarcação p t = atualizarCasa p (\_ -> Casa Marcada) t
-
-alterarMarcação : PosiçãoDaCasa -> Tabuleiro -> Tabuleiro
-alterarMarcação pos t =
-    case casa pos t of
-        Vazia  -> t
-        Casa p -> case p of
-            Marcada    -> inserirPedra pos Desmarcada t
-            Desmarcada -> inserirPedra pos Marcada t
+mudarSeleção : Posição -> Estado -> Estado
+mudarSeleção pos e =
+    if e.selecionada == Just pos
+       then { e | selecionada <- Nothing }
+       else { e | selecionada <- Just pos }
 
 atualizar : Comando -> Estado -> Estado
 atualizar c e = case c of
-    AlterarMarcação p ->
-        case e.casaMarcada of
-            Nothing -> 
-                { e | tabuleiro <- inserirMarcação p e.tabuleiro
-                , casaMarcada <- Just p }
-            Just pos -> 
-                if pos == p
-                   then { e | tabuleiro <- removerMarcação p e.tabuleiro
-                                 , casaMarcada <- Nothing }
-                   else 
-                       let t = removerMarcação pos e.tabuleiro
-                           t' = inserirMarcação p t
-                       in { e | tabuleiro <- t', casaMarcada <- Just p }
+    MudarSeleção pos -> mudarSeleção pos e
 
 -- Exibição
 
-exibirQuadrante : Disposição -> Tabuleiro -> Element
-exibirQuadrante d t =
-    let (Quadrante array) = quadrante d t
-        casas = Array.indexedMap (exibirCasa d) array
-    in  flow down
-            [ Array.slice 0  5  casas |> Array.toList |> flow right
-            , Array.slice 5  10 casas |> Array.toList |> flow right
-            , Array.slice 10 15 casas |> Array.toList |> flow right
-            , Array.slice 15 20 casas |> Array.toList |> flow right
-            , Array.slice 20 25 casas |> Array.toList |> flow right
+exibirQuadrante : Maybe Posição -> Quadrante -> Element.Element
+exibirQuadrante selecionada (Quadrante (disp, array))  =
+    let info i =
+            let posiçãoDaCasa = posição disp i
+                foiSelecionada = selecionada == Just posiçãoDaCasa 
+            in (foiSelecionada, posiçãoDaCasa)
+        casas = indexedMap (exibirCasa info) array
+    in  Element.flow Element.down
+            [ slice 0  5  casas |> toList |> Element.flow Element.right
+            , slice 5  10 casas |> toList |> Element.flow Element.right
+            , slice 10 15 casas |> toList |> Element.flow Element.right
+            , slice 15 20 casas |> toList |> Element.flow Element.right
+            , slice 20 25 casas |> toList |> Element.flow Element.right
             ]
 
-exibirCasa : Disposição -> Int -> Casa -> Element
-exibirCasa d índice c =
-    let p = posição d índice
-    in case c of
-        Vazia      -> Text.plainText " _ " |> Input.clickable (Signal.send canal (AlterarMarcação p))
-        Casa pedra -> exibirPedra pedra |> Input.clickable (Signal.send canal (AlterarMarcação p))
+exibirCasa : (Índice -> (Bool, Posição)) -> Índice -> Casa -> Element.Element
+exibirCasa f i c =
+    let (selecionada, pos) = f i
+    in Input.clickable (Signal.send canal (MudarSeleção pos)) <|
+           case c of
+               Vazia -> Text.plainText " _ "
+               Pedra -> exibirPedra selecionada
 
-exibirPedra : Pedra -> Element
-exibirPedra p = case p of
-    Marcada    -> Text.color Color.lightGreen (Text.fromString " o ") |> Text.centered
-    Desmarcada -> Text.plainText " o "
+exibirPedra : Bool -> Element.Element
+exibirPedra selecionada =
+    if selecionada
+        then Text.color Color.lightGreen (Text.fromString " o ") |> Text.centered
+        else Text.plainText " o "
 
-quadranteSuperior = exibirQuadrante Superior
-quadranteInferior = exibirQuadrante Inferior
-quadranteOeste = exibirQuadrante Oeste
-quadranteLeste = exibirQuadrante Leste
-quadranteCentral = exibirQuadrante Central
-espaçoVazio t = spacer (widthOf <| quadranteOeste t) (heightOf <| quadranteSuperior t)
+desenhoDoQuadrante : Disposição -> Estado -> Element.Element
+desenhoDoQuadrante d e = exibirQuadrante e.selecionada (quadrante d e.tabuleiro)
 
-exibir : (Int, Int) -> Tabuleiro -> Element
-exibir (x, y) t = container x y middle <| flow down
-    [ flow right [ espaçoVazio t,    quadranteSuperior t, espaçoVazio t    ]
-    , flow right [ quadranteOeste t, quadranteCentral t,  quadranteLeste t ]
-    , flow right [ espaçoVazio t,    quadranteInferior t, espaçoVazio t    ]
+quadranteSuperior = desenhoDoQuadrante Superior
+quadranteInferior = desenhoDoQuadrante Inferior
+quadranteOeste = desenhoDoQuadrante Oeste
+quadranteLeste = desenhoDoQuadrante Leste
+quadranteCentral = desenhoDoQuadrante Central
+espaçoVazio e =
+    Element.spacer (Element.widthOf <| quadranteOeste e) (Element.heightOf <| quadranteSuperior e)
+
+exibir : (Int, Int) -> Estado -> Element.Element
+exibir (x, y) e = Element.container x y Element.middle <| Element.flow Element.down
+    [ Element.flow Element.right [ espaçoVazio e,    quadranteSuperior e, espaçoVazio e    ]
+    , Element.flow Element.right [ quadranteOeste e, quadranteCentral e,  quadranteLeste e ]
+    , Element.flow Element.right [ espaçoVazio e,    quadranteInferior e, espaçoVazio e    ]
     ]
 
 -- Sinais
 
 type Comando
-    = AlterarMarcação PosiçãoDaCasa
+    = MudarSeleção Posição
 
 canal : Signal.Channel Comando
-canal = Signal.channel <| AlterarMarcação (Central, 2, 2)
+canal = Signal.channel <| MudarSeleção (Central, 2, 2)
 
-main : Signal Element
+main : Signal Element.Element
 main =  Signal.subscribe canal
      |> Signal.foldp atualizar estadoInicial
-     |> Signal.map .tabuleiro
      |> Signal.map2 exibir Window.dimensions
