@@ -90,13 +90,13 @@ posiçãoIntermediária a b = case distância a b of
 posiçãoAbsoluta : Posição -> (Índice, Índice)
 posiçãoAbsoluta (d, i, j) =
     let iAbsoluto = case d of
-            Oeste -> i
-            Leste -> i + 10
-            _     -> i + 5
+            Superior -> i
+            Inferior -> i + 10
+            _        -> i + 5
         jAbsoluto = case d of
-            Superior -> j
-            Inferior -> j + 10
-            _        -> j + 5
+            Oeste -> j
+            Leste -> j + 10
+            _     -> j + 5
     in  (iAbsoluto, jAbsoluto)
 
 distância : Posição -> Posição -> (Índice, Índice)
@@ -107,13 +107,13 @@ distância p1 p2 =
 
 posiçãoNoQuadrante : (Índice, Índice) -> Maybe Posição
 posiçãoNoQuadrante (i, j) =
-    let quadrantesX = if | i < 5     -> [Oeste]
-                         | i < 10    -> [Superior, Central, Inferior]
-                         | otherwise -> [Leste]
-
-        quadrantesY = if | j < 5     -> [Superior]
-                         | j < 10    -> [Oeste, Central, Leste]
+    let quadrantesX = if | i < 5     -> [Superior]
+                         | i < 10    -> [Oeste, Central, Leste]
                          | otherwise -> [Inferior]
+
+        quadrantesY = if | j < 5     -> [Oeste]
+                         | j < 10    -> [Superior, Central, Inferior]
+                         | otherwise -> [Leste]
 
         quadrante = List.filter (flip List.member quadrantesY) quadrantesX
 
