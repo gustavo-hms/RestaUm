@@ -2,6 +2,7 @@ import Array (..)
 import Text
 import Graphics.Element as Element
 import Graphics.Input as Input
+import Graphics.Collage as Collage
 import Window
 import Signal
 import Maybe
@@ -164,13 +165,13 @@ atualizar c e = case c of
 
 -- Exibição
 
-exibirQuadrante : Maybe Posição -> Quadrante -> Element.Element
-exibirQuadrante selecionada (Quadrante (disp, array))  =
+exibirQuadrante : Int -> Maybe Posição -> Quadrante -> Element.Element
+exibirQuadrante lado selecionada (Quadrante (disp, array))  =
     let info i =
             let posiçãoDaCasa = posição disp i
                 foiSelecionada = selecionada == Just posiçãoDaCasa 
             in (foiSelecionada, posiçãoDaCasa)
-        casas = indexedMap (exibirCasa info) array
+        casas = indexedMap (info >> exibirCasa (lado//5)) array
     in  Element.flow Element.down
             [ slice 0  5  casas |> toList |> Element.flow Element.right
             , slice 5  10 casas |> toList |> Element.flow Element.right
@@ -179,36 +180,45 @@ exibirQuadrante selecionada (Quadrante (disp, array))  =
             , slice 20 25 casas |> toList |> Element.flow Element.right
             ]
 
-exibirCasa : (Índice -> (Bool, Posição)) -> Índice -> Casa -> Element.Element
-exibirCasa f i c =
-    let (selecionada, pos) = f i
-    in case c of
-           Vazia -> Text.plainText " _ " |> Input.clickable (Signal.send canal (Mover pos))
-           Pedra -> exibirPedra selecionada |> Input.clickable (Signal.send canal (MudarSeleção pos))
+exibirCasa : Int -> (Bool, Posição) -> Casa -> Element.Element
+exibirCasa lado (selecionada, pos) c = case c of
+    Vazia -> vazio lado |> Input.clickable (Signal.send canal (Mover pos))
+    Pedra -> pedra lado selecionada |> Input.clickable (Signal.send canal (MudarSeleção pos))
 
-exibirPedra : Bool -> Element.Element
-exibirPedra selecionada =
-    if selecionada
-        then Text.color Color.lightGreen (Text.fromString " o ") |> Text.centered
-        else Text.plainText " o "
+pedra : Int -> Bool -> Element.Element
+pedra lado selecionada =
+    let (corInterna, corDaBorda) = if selecionada then (Color.lightGreen, Color.darkGreen) else (Color.black, Color.black)
+    in  desenharPedra lado corInterna corDaBorda 
 
-desenhoDoQuadrante : Disposição -> Estado -> Element.Element
-desenhoDoQuadrante d e = exibirQuadrante e.selecionada (quadrante d e.tabuleiro)
+desenharPedra : Int -> Color.Color -> Color.Color -> Element.Element
+desenharPedra lado corInterna corDaBorda =
+    let raio = (toFloat lado)/2 - 3
+    in  Collage.collage lado lado
+        [ Collage.circle raio |> Collage.filled corInterna
+        , Collage.circle raio |> Collage.outlined (Collage.solid corDaBorda)]
 
-quadranteSuperior = desenhoDoQuadrante Superior
-quadranteInferior = desenhoDoQuadrante Inferior
-quadranteOeste = desenhoDoQuadrante Oeste
-quadranteLeste = desenhoDoQuadrante Leste
-quadranteCentral = desenhoDoQuadrante Central
-espaçoVazio e =
-    Element.spacer (Element.widthOf <| quadranteOeste e) (Element.heightOf <| quadranteSuperior e)
+vazio : Int -> Element.Element
+vazio lado = Collage.collage lado lado [Collage.circle 1.5 |> Collage.filled Color.black]
+
+desenhoDoQuadrante : Int -> Disposição -> Estado -> Element.Element
+desenhoDoQuadrante lado d e = exibirQuadrante lado e.selecionada (quadrante d e.tabuleiro)
+
+quadranteSuperior lado = desenhoDoQuadrante lado Superior
+quadranteInferior lado = desenhoDoQuadrante lado Inferior
+quadranteOeste lado = desenhoDoQuadrante lado Oeste
+quadranteLeste lado = desenhoDoQuadrante lado Leste
+quadranteCentral lado = desenhoDoQuadrante lado Central
+espaçoVazio lado e =
+    Element.spacer (Element.widthOf <| quadranteOeste lado e) (Element.heightOf <| quadranteSuperior lado e)
 
 exibir : (Int, Int) -> Estado -> Element.Element
-exibir (x, y) e = Element.container x y Element.middle <| Element.flow Element.down
-    [ Element.flow Element.right [ espaçoVazio e,    quadranteSuperior e, espaçoVazio e    ]
-    , Element.flow Element.right [ quadranteOeste e, quadranteCentral e,  quadranteLeste e ]
-    , Element.flow Element.right [ espaçoVazio e,    quadranteInferior e, espaçoVazio e    ]
-    ]
+exibir (x, y) e =
+    let lado = 120
+    in  Element.container x y Element.middle <| Element.flow Element.down
+            [ Element.flow Element.right [ espaçoVazio lado e,    quadranteSuperior lado e, espaçoVazio lado e    ]
+            , Element.flow Element.right [ quadranteOeste lado e, quadranteCentral lado e,  quadranteLeste lado e ]
+            , Element.flow Element.right [ espaçoVazio lado e,    quadranteInferior lado e, espaçoVazio lado e    ]
+            ]
 
 -- Sinais
 
