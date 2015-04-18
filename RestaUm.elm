@@ -60,13 +60,13 @@ posição d índice =
         coluna = índice - linha*5
     in  (d, linha, coluna)
 
-casa : Posição -> Tabuleiro -> Casa
-casa (d, i, j) t =
+casa : Tabuleiro -> Posição -> Casa
+casa t (d, i, j) =
     let (Quadrante (_, a)) = quadrante d t
     in  get (5*i+j) a |> Maybe.withDefault (Vazia)
 
 casaIntermediária : Posição -> Posição -> Tabuleiro -> Maybe Casa
-casaIntermediária a b t = Maybe.map (flip casa t) (posiçãoIntermediária a b)
+casaIntermediária a b t = Maybe.map (casa t) (posiçãoIntermediária a b)
 
 posiçãoIntermediária : Posição -> Posição -> Maybe Posição
 posiçãoIntermediária a b = case distância a b of
@@ -126,8 +126,7 @@ posiçãoNoQuadrante (i, j) =
 atualizarCasa : Casa -> Posição -> Tabuleiro -> Tabuleiro
 atualizarCasa novaCasa (d, i, j) t =
     let (Quadrante (_, array)) = quadrante d t
-        novoQuadrante =
-            Quadrante (d, indexedMap (\k c -> if k == 5*i+j then novaCasa else c) array)
+        novoQuadrante = Quadrante (d, set (5*i+j) novaCasa array)
     in set (índice d) novoQuadrante t
 
 removerPedra : Posição -> Tabuleiro -> Tabuleiro
@@ -148,7 +147,7 @@ mover ma b e =
         Nothing -> e
         Just a  ->
             let intermediária = posiçãoIntermediária a b
-                casaIntermediária = Maybe.map (flip casa e.tabuleiro) intermediária
+                casaIntermediária = Maybe.map (casa e.tabuleiro) intermediária
             in  case intermediária of
                     Nothing  -> e
                     Just pos -> if casaIntermediária == Just Vazia
@@ -208,16 +207,15 @@ quadranteInferior lado = desenhoDoQuadrante lado Inferior
 quadranteOeste lado = desenhoDoQuadrante lado Oeste
 quadranteLeste lado = desenhoDoQuadrante lado Leste
 quadranteCentral lado = desenhoDoQuadrante lado Central
-espaçoVazio lado e =
-    Element.spacer (Element.widthOf <| quadranteOeste lado e) (Element.heightOf <| quadranteSuperior lado e)
+espaçoVazio lado = Element.spacer lado lado
 
 exibir : (Int, Int) -> Estado -> Element.Element
 exibir (x, y) e =
     let lado = 120
     in  Element.container x y Element.middle <| Element.flow Element.down
-            [ Element.flow Element.right [ espaçoVazio lado e,    quadranteSuperior lado e, espaçoVazio lado e    ]
+            [ Element.flow Element.right [ espaçoVazio lado,      quadranteSuperior lado e, espaçoVazio lado      ]
             , Element.flow Element.right [ quadranteOeste lado e, quadranteCentral lado e,  quadranteLeste lado e ]
-            , Element.flow Element.right [ espaçoVazio lado e,    quadranteInferior lado e, espaçoVazio lado e    ]
+            , Element.flow Element.right [ espaçoVazio lado,      quadranteInferior lado e, espaçoVazio lado      ]
             ]
 
 -- Sinais
