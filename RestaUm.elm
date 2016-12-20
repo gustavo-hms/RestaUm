@@ -63,6 +63,11 @@ atualizar ação modelo =
 
 
 escolher : Posição -> Modelo -> Modelo
+escolher posição modelo =
+    if ocupada posição modelo then
+        { modelo | escolhida = Just posição }
+    else
+        modelo
 
 
 mover : Jogada -> Tabuleiro -> Tabuleiro
