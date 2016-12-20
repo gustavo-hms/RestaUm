@@ -1,6 +1,6 @@
 module RestaUm exposing (..)
 
-import Matrix as Matrix
+import Matrix
 
 
 -- Modelo
@@ -85,19 +85,22 @@ dentroDoTabuleiro ( i, j ) =
 
 ocupada : Posição -> Tabuleiro -> Bool
 ocupada ( i, j ) tabuleiro =
-    let
-        casa =
-            Matrix.get i j tabuleiro
-    in
-        case casa of
-            Nothing ->
-                False
+    if not <| dentroDoTabuleiro ( i, j ) then
+        False
+    else
+        let
+            casa =
+                Matrix.get i j tabuleiro
+        in
+            case casa of
+                Nothing ->
+                    False
 
-            Just Vazia ->
-                False
+                Just Vazia ->
+                    False
 
-            Just Pedra ->
-                True
+                Just Pedra ->
+                    True
 
 
 jogadaVálida : Jogada -> Bool
