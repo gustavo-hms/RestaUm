@@ -80,7 +80,7 @@ mover jogada tabuleiro =
                 jogada
 
             casaDoMeio =
-                metade origem destino
+                entre origem destino
         in
             tabuleiro
                 |> remover origem
@@ -92,7 +92,7 @@ jogadaVálida : Jogada -> Bool
 jogadaVálida { origem, destino } =
     let
         meio =
-            talvezMetade origem destino
+            talvezEntre origem destino
     in
         case meio of
             Nothing ->
@@ -102,11 +102,11 @@ jogadaVálida { origem, destino } =
                 ocupada origem && ocupada casaDoMeio && not (ocupada destino)
 
 
-talvezMetade : Posição -> Posição -> Maybe Posição
-talvezMetade a c =
+talvezEntre : Posição -> Posição -> Maybe Posição
+talvezEntre a c =
     let
         ( b1, b2 ) =
-            metade a c
+            entre a c
 
         ( a1, a2 ) =
             a
@@ -120,8 +120,8 @@ talvezMetade a c =
             Just ( b1, b2 )
 
 
-metade : Posição -> Posição -> Posição
-metade ( a1, a2 ) ( c1, c2 ) =
+entre : Posição -> Posição -> Posição
+entre ( a1, a2 ) ( c1, c2 ) =
     let
         b1 =
             c1 - a1
