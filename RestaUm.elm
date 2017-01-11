@@ -147,19 +147,12 @@ ocupada ( i, j ) tabuleiro =
     if not <| dentroDoTabuleiro ( i, j ) then
         False
     else
-        let
-            casa =
-                Matrix.get i j tabuleiro
-        in
-            case casa of
-                Nothing ->
-                    False
+        case Matrix.get i j tabuleiro of
+            Just Pedra ->
+                True
 
-                Just Vazia ->
-                    False
-
-                Just Pedra ->
-                    True
+            _ ->
+                False
 
 
 inserir : Posição -> Tabuleiro -> Tabuleiro
