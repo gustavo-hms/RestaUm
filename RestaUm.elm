@@ -71,6 +71,65 @@ escolher posição modelo =
 
 
 mover : Jogada -> Tabuleiro -> Tabuleiro
+mover jogada tabuleiro =
+    if not (jogadaVálida jogada) then
+        tabuleiro
+    else
+        let
+            { origem, destino } =
+                jogada
+
+            casaDoMeio =
+                metade origem destino
+        in
+            tabuleiro
+                |> remover origem
+                |> remover casaDoMeio
+                |> inserir destino
+
+
+jogadaVálida : Jogada -> Bool
+jogadaVálida { origem, destino } =
+    let
+        meio =
+            talvezMetade origem destino
+    in
+        case meio of
+            Nothing ->
+                False
+
+            Just casaDoMeio ->
+                ocupada origem && ocupada casaDoMeio && not (ocupada destino)
+
+
+talvezMetade : Posição -> Posição -> Maybe Posição
+talvezMetade a c =
+    let
+        ( b1, b2 ) =
+            metade a c
+
+        ( a1, a2 ) =
+            a
+
+        distância =
+            (b1 - a1) ^ 2 + (b2 - a2) ^ 2
+    in
+        if distância /= 1 then
+            Nothing
+        else
+            Just ( b1, b2 )
+
+
+metade : Posição -> Posição -> Posição
+metade ( a1, a2 ) ( c1, c2 ) =
+    let
+        b1 =
+            c1 - a1
+
+        b2 =
+            c2 - a2
+    in
+        ( a1 + b1 / 2, a2 + b2 / 2 )
 
 
 dentroDoTabuleiro : Posição -> Bool
@@ -101,9 +160,6 @@ ocupada ( i, j ) tabuleiro =
 
                 Just Pedra ->
                     True
-
-
-jogadaVálida : Jogada -> Bool
 
 
 inserir : Posição -> Tabuleiro -> Tabuleiro
