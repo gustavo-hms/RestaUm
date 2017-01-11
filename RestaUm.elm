@@ -59,7 +59,7 @@ atualizar ação modelo =
                 jogada =
                     { origem = modelo.escolhida, destino = posição }
             in
-                { tabuleiro = mover jogada modelo.tabuleiro, escolhida = Nothing }
+                { tabuleiro = jogar jogada modelo.tabuleiro, escolhida = Nothing }
 
 
 escolher : Posição -> Modelo -> Modelo
@@ -70,8 +70,8 @@ escolher posição modelo =
         modelo
 
 
-mover : Jogada -> Tabuleiro -> Tabuleiro
-mover jogada tabuleiro =
+jogar : Jogada -> Tabuleiro -> Tabuleiro
+jogar jogada tabuleiro =
     if not (jogadaVálida jogada) then
         tabuleiro
     else
