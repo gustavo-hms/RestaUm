@@ -46,13 +46,17 @@ tabuleiroNovo =
             |> Matrix.indexedMap casa
 
 
+modelo =
+    Modelo tabuleiroNovo Nothing
+
+
 
 -- Atualização
 
 
 type Ação
     = Escolher Posição
-    | MoverPara Posição
+    | Ocupar Posição
 
 
 atualizar : Ação -> Modelo -> Modelo
@@ -61,17 +65,22 @@ atualizar ação modelo =
         Escolher posição ->
             escolher posição modelo
 
-        MoverPara posição ->
-            let
-                jogada =
-                    { origem = modelo.escolhida, destino = posição }
-            in
-                { tabuleiro = jogar jogada modelo.tabuleiro, escolhida = Nothing }
+        Ocupar posição ->
+            case modelo.escolhida of
+                Nothing ->
+                    modelo
+
+                Just escolhida ->
+                    let
+                        jogada =
+                            { origem = escolhida, destino = posição }
+                    in
+                        { tabuleiro = jogar jogada modelo.tabuleiro, escolhida = Nothing }
 
 
 escolher : Posição -> Modelo -> Modelo
 escolher posição modelo =
-    if ocupada posição modelo then
+    if ocupada posição modelo.tabuleiro then
         { modelo | escolhida = Just posição }
     else
         modelo
@@ -79,7 +88,7 @@ escolher posição modelo =
 
 jogar : Jogada -> Tabuleiro -> Tabuleiro
 jogar jogada tabuleiro =
-    if not (jogadaVálida jogada) then
+    if not (jogadaVálida jogada tabuleiro) then
         tabuleiro
     else
         let
@@ -95,8 +104,8 @@ jogar jogada tabuleiro =
                 |> inserir destino
 
 
-jogadaVálida : Jogada -> Bool
-jogadaVálida { origem, destino } =
+jogadaVálida : Jogada -> Tabuleiro -> Bool
+jogadaVálida { origem, destino } t =
     let
         meio =
             talvezEntre origem destino
@@ -106,7 +115,7 @@ jogadaVálida { origem, destino } =
                 False
 
             Just casaDoMeio ->
-                ocupada origem && ocupada casaDoMeio && not (ocupada destino)
+                ocupada origem t && ocupada casaDoMeio t && not (ocupada destino t)
 
 
 talvezEntre : Posição -> Posição -> Maybe Posição
@@ -127,7 +136,7 @@ entre ( a1, a2 ) ( b1, b2 ) =
         ( dx, dy ) =
             ( b1 - a1, b2 - a2 )
     in
-        ( a1 + dx / 2, a2 + dy / 2 )
+        ( a1 + dx // 2, a2 + dy // 2 )
 
 
 dentroDoTabuleiro : Posição -> Bool
@@ -154,10 +163,10 @@ ocupada ( i, j ) tabuleiro =
 
 
 inserir : Posição -> Tabuleiro -> Tabuleiro
-inserir ( i, j ) tabuleiro =
+inserir ( i, j ) =
     Matrix.set i j Pedra
 
 
 remover : Posição -> Tabuleiro -> Tabuleiro
-remover ( i, j ) tabuleiro =
+remover ( i, j ) =
     Matrix.set i j Vazia
