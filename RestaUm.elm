@@ -7,7 +7,8 @@ import Matrix
 
 
 type Casa
-    = Vazia
+    = Inexistente
+    | Vazia
     | Pedra
 
 
@@ -31,12 +32,18 @@ type alias Modelo =
     }
 
 
-novoTabuleiro =
+tabuleiroNovo =
     let
-        casas =
-            Matrix.repeat 15 15 Pedra
+        casa i j _ =
+            if ( i, j ) == ( 6, 6 ) then
+                Vazia
+            else if dentroDoTabuleiro ( i, j ) then
+                Pedra
+            else
+                Inexistente
     in
-        Matrix.set 6 6 Vazia casas
+        Matrix.repeat 15 15 Inexistente
+            |> Matrix.indexedMap casa
 
 
 
