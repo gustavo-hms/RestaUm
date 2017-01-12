@@ -103,33 +103,24 @@ jogadaVálida { origem, destino } =
 
 
 talvezEntre : Posição -> Posição -> Maybe Posição
-talvezEntre a c =
+talvezEntre a b =
     let
-        ( b1, b2 ) =
-            entre a c
-
-        ( a1, a2 ) =
-            a
-
-        distância =
-            (b1 - a1) ^ 2 + (b2 - a2) ^ 2
+        distância ( x1, x2 ) ( y1, y2 ) =
+            (y1 - x1) ^ 2 + (y2 - x2) ^ 2
     in
-        if distância /= 1 then
+        if distância a b /= 4 then
             Nothing
         else
-            Just ( b1, b2 )
+            Just (entre a b)
 
 
 entre : Posição -> Posição -> Posição
-entre ( a1, a2 ) ( c1, c2 ) =
+entre ( a1, a2 ) ( b1, b2 ) =
     let
-        b1 =
-            c1 - a1
-
-        b2 =
-            c2 - a2
+        ( dx, dy ) =
+            ( b1 - a1, b2 - a2 )
     in
-        ( a1 + b1 / 2, a2 + b2 / 2 )
+        ( a1 + dx / 2, a2 + dy / 2 )
 
 
 dentroDoTabuleiro : Posição -> Bool
