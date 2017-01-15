@@ -35,7 +35,7 @@ type alias Modelo =
 tabuleiroNovo =
     let
         casa i j _ =
-            if ( i, j ) == ( 6, 6 ) then
+            if ( i, j ) == ( 7, 7 ) then
                 Vazia
             else if dentroDoTabuleiro ( i, j ) then
                 Pedra
