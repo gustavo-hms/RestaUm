@@ -115,7 +115,6 @@ efetuarJogada =
                     jogada =
                         Jogada ( 7, 5 ) ( 7, 7 )
 
-
                     resultado =
                         modelo.tabuleiro
                             |> remover ( 7, 5 )
@@ -134,6 +133,31 @@ efetuarJogada =
                     modelo.tabuleiro
                         |> jogar jogada
                         |> Expect.equal modelo.tabuleiro
+        , fuzz4 (intRange 0 14) (intRange 0 14) (intRange 0 14) (intRange 0 14) "Executa uma jogada aleatória" <|
+            \a1 a2 b1 b2 ->
+                let
+                    jogada =
+                        Jogada ( a1, a2 ) ( b1, b2 )
+
+                    esperado =
+                        if jogadaVálida jogada modelo.tabuleiro then
+                            let
+                                ( dx, dy ) =
+                                    ( b1 - a1, b2 - a2 )
+
+                                meio =
+                                    ( a1 + dx // 2, a2 + dy // 2 )
+                            in
+                                modelo.tabuleiro
+                                    |> remover ( a1, a2 )
+                                    |> remover meio
+                                    |> inserir ( b1, b2 )
+                        else
+                            modelo.tabuleiro
+                in
+                    modelo.tabuleiro
+                        |> jogar jogada
+                        |> Expect.equal esperado
         ]
 
 
