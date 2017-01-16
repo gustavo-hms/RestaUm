@@ -107,9 +107,40 @@ validarJogada =
         ]
 
 
+efetuarJogada =
+    describe "Verificar se uma jogada é feita corretamente"
+        [ test "Jogada válida" <|
+            \() ->
+                let
+                    jogada =
+                        Jogada ( 7, 5 ) ( 7, 7 )
+
+
+                    resultado =
+                        modelo.tabuleiro
+                            |> remover ( 7, 5 )
+                            |> remover ( 7, 6 )
+                            |> inserir ( 7, 7 )
+                in
+                    modelo.tabuleiro
+                        |> jogar jogada
+                        |> Expect.equal resultado
+        , test "Jogada inválida" <|
+            \() ->
+                let
+                    jogada =
+                        Jogada ( 7, 6 ) ( 7, 8 )
+                in
+                    modelo.tabuleiro
+                        |> jogar jogada
+                        |> Expect.equal modelo.tabuleiro
+        ]
+
+
 all : Test
 all =
     describe "Testes"
         [ escolherPedra
         , validarJogada
+        , efetuarJogada
         ]
