@@ -6,6 +6,11 @@ import Fuzz exposing (list, int, intRange, tuple, string)
 import RestaUm exposing (..)
 
 
+posição : Fuzz.Fuzzer Posição
+posição =
+    tuple ( intRange 0 14, intRange 0 14 )
+
+
 escolherPedra : Test
 escolherPedra =
     describe "Escolher uma casa"
@@ -25,7 +30,7 @@ escolherPedra =
                 modelo
                     |> escolher ( 7, 7 )
                     |> Expect.equal modelo
-        , fuzz (tuple ( intRange 0 14, intRange 0 14 )) "Tenta selecionar uma casa aleatória" <|
+        , fuzz posição "Tenta selecionar uma casa aleatória" <|
             \posição ->
                 let
                     esperado =
@@ -40,6 +45,7 @@ escolherPedra =
         ]
 
 
+validarJogada : Test
 validarJogada =
     describe "Validação de uma jogada"
         [ test "Jogada válida" <|
@@ -107,6 +113,7 @@ validarJogada =
         ]
 
 
+efetuarJogada : Test
 efetuarJogada =
     describe "Verificar se uma jogada é feita corretamente"
         [ test "Jogada válida" <|
@@ -133,25 +140,18 @@ efetuarJogada =
                     modelo.tabuleiro
                         |> jogar jogada
                         |> Expect.equal modelo.tabuleiro
-        , fuzz4 (intRange 0 14) (intRange 0 14) (intRange 0 14) (intRange 0 14) "Executa uma jogada aleatória" <|
-            \a1 a2 b1 b2 ->
+        , fuzz2 posição posição "Executa uma jogada aleatória" <|
+            \a b ->
                 let
                     jogada =
-                        Jogada ( a1, a2 ) ( b1, b2 )
+                        Jogada a b
 
                     esperado =
                         if jogadaVálida jogada modelo.tabuleiro then
-                            let
-                                ( dx, dy ) =
-                                    ( b1 - a1, b2 - a2 )
-
-                                meio =
-                                    ( a1 + dx // 2, a2 + dy // 2 )
-                            in
-                                modelo.tabuleiro
-                                    |> remover ( a1, a2 )
-                                    |> remover meio
-                                    |> inserir ( b1, b2 )
+                            modelo.tabuleiro
+                                |> remover a
+                                |> remover (entre a b)
+                                |> inserir b
                         else
                             modelo.tabuleiro
                 in
