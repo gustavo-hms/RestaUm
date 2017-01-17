@@ -1,6 +1,10 @@
 module RestaUm exposing (..)
 
 import Matrix
+import Collage
+import Color
+import Array
+import Element
 
 
 -- Modelo
@@ -32,6 +36,7 @@ type alias Modelo =
     }
 
 
+tabuleiroNovo : Tabuleiro
 tabuleiroNovo =
     let
         casa i j _ =
@@ -46,6 +51,7 @@ tabuleiroNovo =
             |> Matrix.indexedMap casa
 
 
+modelo : Modelo
 modelo =
     Modelo tabuleiroNovo Nothing
 
@@ -170,3 +176,53 @@ inserir ( i, j ) =
 remover : Posição -> Tabuleiro -> Tabuleiro
 remover ( i, j ) =
     Matrix.set i j Vazia
+
+
+
+-- Exibição
+
+
+desenharCasa : Float -> Bool -> Casa -> Collage.Form
+desenharCasa tamanho escolhida casa =
+    let
+        raio =
+            tamanho / 2 - 3
+    in
+        Collage.circle raio
+            |> Collage.filled Color.black
+
+
+desenharTabuleiro : Int -> Modelo -> Element.Element
+desenharTabuleiro tamanho modelo =
+    let
+        distância =
+            toFloat tamanho / 15
+
+        mover ( i, j ) casa =
+            let
+                deslocamento =
+                    ( toFloat i * distância, toFloat j * distância )
+            in
+                Collage.move deslocamento casa
+
+        desenhar ( posição, casa ) =
+            casa
+                |> desenharCasa distância (Just posição == modelo.escolhida)
+                |> mover posição
+
+        centro =
+            -7.0 * distância
+
+        casas =
+            modelo.tabuleiro
+                |> Matrix.toIndexedArray
+                |> Array.toList
+                |> List.map desenhar
+                |> Collage.group
+                |> Collage.move ( centro, centro )
+    in
+        Collage.collage tamanho tamanho [ casas ]
+
+
+main =
+    Element.toHtml <| desenharTabuleiro 500 modelo
