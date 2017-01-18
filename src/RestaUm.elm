@@ -1,10 +1,20 @@
 module RestaUm exposing (..)
 
 import Matrix
-import Collage
-import Color
 import Array
-import Element
+import Html
+import Svg
+import Svg.Attributes as Attr
+import Svg.Events as Events
+
+
+main =
+    Html.beginnerProgram
+        { model = modelo
+        , view = desenharTabuleiro 400
+        , update = atualizar
+        }
+
 
 
 -- Modelo
@@ -81,7 +91,9 @@ atualizar ação modelo =
                         jogada =
                             { origem = escolhida, destino = posição }
                     in
-                        { tabuleiro = jogar jogada modelo.tabuleiro, escolhida = Nothing }
+                        { tabuleiro = jogar jogada modelo.tabuleiro
+                        , escolhida = Nothing
+                        }
 
 
 escolher : Posição -> Modelo -> Modelo
@@ -100,28 +112,21 @@ jogar jogada tabuleiro =
         let
             { origem, destino } =
                 jogada
-
-            casaDoMeio =
-                entre origem destino
         in
             tabuleiro
                 |> remover origem
-                |> remover casaDoMeio
+                |> remover (entre origem destino)
                 |> inserir destino
 
 
 jogadaVálida : Jogada -> Tabuleiro -> Bool
 jogadaVálida { origem, destino } t =
-    let
-        meio =
-            talvezEntre origem destino
-    in
-        case meio of
-            Nothing ->
-                False
+    case talvezEntre origem destino of
+        Nothing ->
+            False
 
-            Just casaDoMeio ->
-                ocupada origem t && ocupada casaDoMeio t && not (ocupada destino t)
+        Just meio ->
+            ocupada origem t && ocupada meio t && not (ocupada destino t)
 
 
 talvezEntre : Posição -> Posição -> Maybe Posição
@@ -182,58 +187,83 @@ remover ( i, j ) =
 -- Exibição
 
 
-desenharCasa : Float -> Bool -> Casa -> Collage.Form
-desenharCasa tamanho escolhida casa =
+map : (a -> b) -> ( a, a ) -> ( b, b )
+map f ( x, y ) =
+    ( f x, f y )
+
+
+desenharCasa : Posição -> Int -> Bool -> Casa -> Svg.Svg Ação
+desenharCasa posição tamanho escolhida casa =
     let
         raio =
-            tamanho / 2 - 3
-
-        cor =
-            case casa of
-                Inexistente ->
-                    Color.white
-
-                Vazia ->
-                    Color.darkGrey
-
-                Pedra ->
-                    Color.black
-    in
-        Collage.circle raio
-            |> Collage.filled cor
-
-
-desenharTabuleiro : Int -> Modelo -> Element.Element
-desenharTabuleiro tamanho modelo =
-    let
-        distância =
-            toFloat tamanho / 15
-
-        mover ( i, j ) casa =
-            let
-                deslocamento =
-                    ( toFloat i * distância, toFloat j * distância )
-            in
-                Collage.move deslocamento casa
-
-        desenhar ( posição, casa ) =
-            casa
-                |> desenharCasa distância (Just posição == modelo.escolhida)
-                |> mover posição
+            tamanho // 2
 
         centro =
-            -7.0 * distância
+            map (\n -> n * tamanho + raio) posição
+
+        ( cor, ação ) =
+            case casa of
+                Inexistente ->
+                    ( "white", Nothing )
+
+                Vazia ->
+                    ( "darkGrey", Just <| Ocupar posição )
+
+                Pedra ->
+                    if escolhida then
+                        ( "green", Nothing )
+                    else
+                        ( "black", Just <| Escolher posição )
+    in
+        círculo centro raio cor ação
+
+
+círculo : Posição -> Int -> String -> Maybe Ação -> Svg.Svg Ação
+círculo centro raio cor ação =
+    let
+        ( cx, cy ) =
+            map toString centro
+
+        r =
+            toString raio
+
+        atributos =
+            [ Attr.cx cx
+            , Attr.cy cy
+            , Attr.r r
+            , Attr.fill cor
+            , Attr.stroke "white"
+            , Attr.strokeWidth "3"
+            ]
+    in
+        case ação of
+            Nothing ->
+                Svg.circle atributos []
+
+            Just a ->
+                Svg.circle ((Events.onClick a) :: atributos) []
+
+
+desenharTabuleiro : Int -> Modelo -> Svg.Svg Ação
+desenharTabuleiro tamanho modelo =
+    let
+        desenhar ( posição, casa ) =
+            let
+                distância =
+                    tamanho // 15
+
+                escolhida =
+                    Just posição == modelo.escolhida
+            in
+                desenharCasa posição distância escolhida casa
 
         casas =
             modelo.tabuleiro
                 |> Matrix.toIndexedArray
                 |> Array.toList
                 |> List.map desenhar
-                |> Collage.group
-                |> Collage.move ( centro, centro )
+
+        lado =
+            toString tamanho
     in
-        Collage.collage tamanho tamanho [ casas ]
-
-
-main =
-    Element.toHtml <| desenharTabuleiro 500 modelo
+        Svg.svg [ Attr.width lado, Attr.height lado ] casas
