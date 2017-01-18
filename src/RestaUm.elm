@@ -187,9 +187,20 @@ desenharCasa tamanho escolhida casa =
     let
         raio =
             tamanho / 2 - 3
+
+        cor =
+            case casa of
+                Inexistente ->
+                    Color.white
+
+                Vazia ->
+                    Color.darkGrey
+
+                Pedra ->
+                    Color.black
     in
         Collage.circle raio
-            |> Collage.filled Color.black
+            |> Collage.filled cor
 
 
 desenharTabuleiro : Int -> Modelo -> Element.Element
