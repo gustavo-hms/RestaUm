@@ -202,23 +202,17 @@ desenharCasa posição tamanho escolhida casa =
             map (\n -> n * tamanho + raio) posição
 
         ( cor, ação ) =
-            case casa of
-                Inexistente ->
-                    ( "white", Nothing )
-
-                Vazia ->
-                    ( "darkGrey", Just <| Ocupar posição )
-
-                Pedra ->
-                    if escolhida then
-                        ( "green", Nothing )
-                    else
-                        ( "black", Just <| Escolher posição )
+            if casa == Vazia then
+                ( "darkGrey", Ocupar posição )
+            else if escolhida then
+                ( "green", Escolher posição )
+            else
+                ( "black", Escolher posição )
     in
         círculo centro raio cor ação
 
 
-círculo : Posição -> Int -> String -> Maybe Ação -> Svg.Svg Ação
+círculo : Posição -> Int -> String -> Ação -> Svg.Svg Ação
 círculo centro raio cor ação =
     let
         ( cx, cy ) =
@@ -226,42 +220,40 @@ círculo centro raio cor ação =
 
         r =
             toString raio
-
-        atributos =
+    in
+        Svg.circle
             [ Attr.cx cx
             , Attr.cy cy
             , Attr.r r
             , Attr.fill cor
             , Attr.stroke "white"
             , Attr.strokeWidth "3"
+            , Events.onClick ação
             ]
-    in
-        case ação of
-            Nothing ->
-                Svg.circle atributos []
-
-            Just a ->
-                Svg.circle ((Events.onClick a) :: atributos) []
+            []
 
 
 desenharTabuleiro : Int -> Modelo -> Svg.Svg Ação
 desenharTabuleiro tamanho modelo =
     let
         desenhar ( posição, casa ) =
-            let
-                distância =
-                    tamanho // 15
+            if casa == Inexistente then
+                Nothing
+            else
+                let
+                    distância =
+                        tamanho // 15
 
-                escolhida =
-                    Just posição == modelo.escolhida
-            in
-                desenharCasa posição distância escolhida casa
+                    escolhida =
+                        Just posição == modelo.escolhida
+                in
+                    Just <| desenharCasa posição distância escolhida casa
 
         casas =
             modelo.tabuleiro
                 |> Matrix.toIndexedArray
                 |> Array.toList
-                |> List.map desenhar
+                |> List.filterMap desenhar
 
         lado =
             toString tamanho
