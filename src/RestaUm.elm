@@ -8,6 +8,7 @@ import Svg.Attributes as Attr
 import Svg.Events as Events
 
 
+main : Program Never Modelo Ação
 main =
     Html.beginnerProgram
         { model = modelo
